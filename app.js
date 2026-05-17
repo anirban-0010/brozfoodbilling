@@ -1231,19 +1231,70 @@ async function editInvoice(record) {
 // =========================================================
 // WHATSAPP SHARE
 // =========================================================
-document.getElementById('f_whatsappBtn')?.addEventListener('click', () => {
+document.getElementById('f_whatsappBtn')?.addEventListener('click', async () => {
   const guestName = $('f_guestName')?.value.trim() || 'Guest';
   const invNum = $('f_invNumber')?.textContent || '';
   const roomNo = $('f_roomNo')?.value.trim() || '';
   const grandText = $('f_grandTotal')?.textContent || '₹ 0.00';
   const phone = getFullPhone('f_phone', 'f_countryCode');
 
-  const msg = encodeURIComponent(
-    `Dear ${guestName},\n\nThank you for dining with BroZ Homes & Resorts! \n\nYour Food Bill (${invNum}) has been generated.\nRoom: ${roomNo}\nTotal: ${grandText}\n\nFor any queries, contact brozhelpdesk@gmail.com\n\nWarm regards,\nBroZ Homes & Resorts`
-  );
+  const message = `Dear ${guestName},
+
+Thank you for dining with BroZ Homes & Resorts!
+
+Your Food Bill (${invNum}) has been generated.
+Room: ${roomNo}
+Total: ${grandText}
+
+For any queries, contact brozhelpdesk@gmail.com
+
+Warm regards,
+BroZ Homes & Resorts`;
+
+  toast('Generating PDF for sharing…', 'info');
+
+  let blob;
+  try {
+    blob = await renderInvoicePDFBlob('foodInvoiceDoc');
+  } catch (e) {
+    console.warn('PDF generation for share failed:', e);
+  }
+
+  if (!blob) {
+    const msg = encodeURIComponent(message);
+    const cleanPhone = phone.replace(/[^0-9]/g, '');
+    window.open(cleanPhone ? `https://wa.me/${cleanPhone}?text=${msg}` : `https://wa.me/?text=${msg}`, '_blank');
+    return;
+  }
+
+  const fileName = `FoodBill_${invNum || 'BroZ'}.pdf`;
+  const file = new File([blob], fileName, { type: 'application/pdf' });
+
+  // Try Web Share API (supports file sharing on modern browsers including WhatsApp)
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], text: message, title: `Food Bill ${invNum}` });
+      return;
+    } catch (e) {
+      if (e.name === 'AbortError') return;
+    }
+  }
+
+  // Fallback: download PDF + open WhatsApp with text
+  const pdfUrl = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = pdfUrl;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  setTimeout(() => URL.revokeObjectURL(pdfUrl), 5000);
+
+  const msg = encodeURIComponent(message);
   const cleanPhone = phone.replace(/[^0-9]/g, '');
-  const url = cleanPhone ? `https://wa.me/${cleanPhone}?text=${msg}` : `https://wa.me/?text=${msg}`;
-  window.open(url, '_blank');
+  window.open(cleanPhone ? `https://wa.me/${cleanPhone}?text=${msg}` : `https://wa.me/?text=${msg}`, '_blank');
+
+  toast('PDF downloaded. WhatsApp opened with the bill message.', 'info', 5000);
 });
 
 // =========================================================
