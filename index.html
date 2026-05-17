@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>BroZ Food Billing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="icon" type="image/svg+xml" href="logo.jpg">
+<link rel="stylesheet" href="styles.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<meta name="google-client-id" content="1056273255320-pj4ph6u8f2h398hfi0g2tnk9heuntpc1.apps.googleusercontent.com">
+</head>
+<body>
+
+<!-- ===================================================== -->
+<!-- 1) LOGIN SCREEN                                       -->
+<!-- ===================================================== -->
+<section id="loginScreen" class="login-screen">
+  <div class="login-bg-decor">
+    <div class="decor-circle decor-circle-1"></div>
+    <div class="decor-circle decor-circle-2"></div>
+    <div class="decor-line"></div>
+  </div>
+  <div class="login-card">
+    <div class="login-header">
+      <div class="logo-placeholder">
+        <img class="brand-logo" src="logo.jpg" alt="BroZ" />
+      </div>
+      <h1 class="brand-title">BroZ <span class="amp">Food</span> Billing</h1>
+      <p class="brand-tagline">Invoice Portal</p>
+    </div>
+    <form id="loginForm" class="login-form" autocomplete="off">
+      <div class="field-group">
+        <label for="loginUser">User ID</label>
+        <input type="text" id="loginUser" placeholder="Enter your ID" required />
+      </div>
+      <div class="field-group">
+        <label for="loginPass">Password</label>
+        <input type="password" id="loginPass" placeholder="Enter password" required />
+      </div>
+      <div id="loginError" class="login-error" aria-live="polite"></div>
+      <button type="submit" class="btn-primary">Sign In <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 5"></polyline></svg></button>
+    </form>
+    <div class="login-footer"><p>Authorized personnel only</p></div>
+  </div>
+</section>
+
+<!-- ===================================================== -->
+<!-- 2) HOME SCREEN (property tiles)                       -->
+<!-- ===================================================== -->
+<section id="homeScreen" class="chooser-screen hidden">
+  <header class="top-bar">
+    <div class="top-bar-inner">
+      <div class="top-brand">
+        <div class="logo-placeholder small"><img class="brand-logo" src="logo.jpg" alt="BroZ" /></div>
+        <div>
+          <p class="top-brand-name">BroZ Food Billing</p>
+          <p class="top-brand-sub" id="homeUserLabel">Admin</p>
+        </div>
+      </div>
+      <div class="top-actions">
+        <div class="drive-status" data-drive-status>
+          <button class="btn-ghost drive-btn" data-action="drive-connect">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/><polyline points="8 12 11 15 16 9"/></svg>
+            <span class="drive-btn-label">Connect Drive</span>
+          </button>
+        </div>
+        <button class="btn-ghost" data-action="past-invoices" id="homePastInvoicesBtn" style="display:none;">
+          Past Bills
+        </button>
+        <button class="btn-ghost" data-action="manage-menus" id="homeManageMenusBtn" style="display:none;">
+          Menus
+        </button>
+        <button class="btn-ghost" data-action="logout">Logout</button>
+      </div>
+    </div>
+  </header>
+  <div class="chooser-inner">
+    <div class="chooser-intro">
+      <p class="muted-label">Select a property</p>
+      <h2>Create a Food Bill</h2>
+      <p class="chooser-sub">Choose a property to start billing for food orders.</p>
+    </div>
+    <div class="chooser-cards" id="propertyTiles"></div>
+  </div>
+</section>
+
+<!-- ===================================================== -->
+<!-- 3) FOOD BILLING SCREEN                                -->
+<!-- ===================================================== -->
+<section id="foodBillingScreen" class="dashboard hidden">
+  <header class="top-bar">
+    <div class="top-bar-inner">
+      <div class="top-brand">
+        <div class="logo-placeholder small"><img class="brand-logo" src="logo.jpg" alt="BroZ" /></div>
+        <div>
+          <p class="top-brand-name">BroZ Food Billing</p>
+          <p class="top-brand-sub" id="f_propertyDisplay">—</p>
+        </div>
+      </div>
+      <div class="top-actions">
+        <button class="btn-ghost" data-action="back">Back</button>
+        <button class="btn-ghost" data-action="logout">Logout</button>
+      </div>
+    </div>
+  </header>
+  <main class="dashboard-main">
+    <div class="form-panel">
+      <div class="panel-header">
+        <h2>Food Bill</h2>
+        <p>Enter the food order details below.</p>
+      </div>
+      <form id="foodForm" class="invoice-form" autocomplete="off">
+
+        <div class="form-section">
+          <h3 class="section-title"><span class="section-num">01</span> Guest &amp; Room</h3>
+          <div class="field-group">
+            <label for="f_roomNo">Room No <span class="req">*</span></label>
+            <input type="text" id="f_roomNo" placeholder="e.g. 101" required />
+          </div>
+          <div class="field-group">
+            <label for="f_guestName">Guest Name <span class="req">*</span></label>
+            <input type="text" id="f_guestName" placeholder="Full name" required />
+          </div>
+          <div class="field-group">
+            <label for="f_phone">Phone <span class="opt">(For WhatsApp)</span></label>
+            <div class="phone-input">
+              <select id="f_countryCode" class="country-code"></select>
+              <input type="tel" id="f_phone" inputmode="numeric" pattern="[0-9]*" placeholder="10-digit number" />
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <h3 class="section-title"><span class="section-num">02</span> Food Items</h3>
+          <div id="f_menuChips" class="menu-chips"></div>
+          <div id="f_itemsContainer">
+            <div class="food-item-row">
+              <input type="text" class="item-name" placeholder="Item name" />
+              <input type="number" class="item-qty" min="1" value="1" placeholder="Qty" />
+              <input type="number" class="item-price" min="0" step="0.01" placeholder="Price" />
+              <span class="item-total">₹ 0.00</span>
+              <button type="button" class="btn-remove" aria-label="Remove"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+            </div>
+          </div>
+          <button type="button" id="f_addItem" class="btn-add">+ Add Item</button>
+        </div>
+
+        <div class="form-section">
+          <h3 class="section-title"><span class="section-num">03</span> Summary</h3>
+          <div class="field-group">
+            <label for="f_discount">Discount (₹) <span class="opt">(Optional)</span></label>
+            <input type="number" id="f_discount" min="0" step="0.01" value="0" />
+          </div>
+          <div class="total-display-row">
+            <span>Subtotal:</span>
+            <strong id="f_subtotal">₹ 0.00</strong>
+          </div>
+          <div class="total-display-row grand-total">
+            <span>Grand Total:</span>
+            <strong id="f_grandTotal">₹ 0.00</strong>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="field-group">
+            <label for="f_authorizedBy">Authorized By <span class="req">*</span></label>
+            <input type="text" id="f_authorizedBy" placeholder="Your name" required />
+          </div>
+          <div class="field-group">
+            <label for="f_notes">Notes <span class="opt">(Optional)</span></label>
+            <textarea id="f_notes" rows="2" placeholder="Special requests or instructions…"></textarea>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn-secondary" data-action="reset" data-form="food">Reset</button>
+          <button type="submit" class="btn-primary" id="f_generateBtn">Generate Bill</button>
+        </div>
+      </form>
+    </div>
+
+    <aside class="preview-panel">
+      <div class="preview-actions" id="f_previewActions">
+        <button class="btn-primary btn-pdf" data-action="pdf" data-target="foodInvoiceDoc" disabled>Download PDF</button>
+        <button class="btn-whatsapp" id="f_whatsappBtn" disabled>WhatsApp</button>
+      </div>
+      <div id="foodInvoiceDoc" class="invoice-doc">
+        <div class="invoice-watermark">BroZ</div>
+        <div class="invoice-header">
+          <div class="invoice-brand">
+             <div class="invoice-logo"><svg width="64" height="64" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" rx="12" fill="#233b2e"/><text x="50" y="68" text-anchor="middle" font-family="'Cormorant Garamond',Georgia,serif" font-size="58" font-weight="600" fill="#c9a679">B</text></svg></div>
+            <div class="invoice-brand-text">
+              <h1>BroZ Homes <span class="amp">&amp;</span> Resorts</h1>
+              <p class="sub-brand">Food &amp; Beverage Bill</p>
+              <p class="addr-line">brozstays.com · brozhelpdesk@gmail.com</p>
+            </div>
+          </div>
+          <div class="invoice-meta">
+            <p class="invoice-label">FOOD BILL</p>
+            <p class="invoice-num">No. <span id="f_invNumber">—</span></p>
+            <p class="invoice-date">Date: <span id="f_invDate">—</span></p>
+          </div>
+        </div>
+        <div class="invoice-divider"></div>
+        <div class="invoice-billto">
+          <div>
+            <p class="muted-label">Guest</p>
+            <p class="big-name" id="f_invGuest">—</p>
+            <p class="sub-info">Room: <span id="f_invRoom">—</span></p>
+            <p class="sub-info" id="f_invPhone"></p>
+          </div>
+          <div>
+            <p class="muted-label">Property</p>
+            <p class="big-name" id="f_invProperty">—</p>
+            <p class="sub-info" id="f_invPropertyAddr"></p>
+          </div>
+        </div>
+        <table class="invoice-table">
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th class="num">Qty</th>
+              <th class="num">Price (₹)</th>
+              <th class="num">Total (₹)</th>
+            </tr>
+          </thead>
+          <tbody id="f_invTableBody">
+            <tr class="empty-row"><td colspan="4">Add items to preview the bill.</td></tr>
+          </tbody>
+        </table>
+        <div class="invoice-totals">
+          <div class="totals-row"><span>Subtotal</span><span>₹ <span id="f_invSubtotal">0.00</span></span></div>
+          <div class="totals-row" id="f_invDiscountRow"><span>Discount</span><span>– ₹ <span id="f_invDiscount">0.00</span></span></div>
+          <div class="totals-row grand"><span>Grand Total</span><span>₹ <span id="f_invGrand">0.00</span></span></div>
+        </div>
+        <div class="invoice-notes" id="f_invNotesBlock" style="display:none;">
+          <p class="muted-label">Notes</p>
+          <p id="f_invNotes"></p>
+        </div>
+        <div class="invoice-footer">
+          <div class="signature-block">
+            <div class="sig-line"></div>
+            <p class="sig-name" id="f_invAuthBy">—</p>
+            <p class="sig-title">Authorized Signatory</p>
+            <p class="sig-org">BroZ Homes &amp; Resorts</p>
+          </div>
+          <div class="thank-you">
+            <p class="thanks">Thank you!</p>
+            <p class="muted-label small">We hope to serve you again</p>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </main>
+  <footer class="site-footer"><p>&copy; <span class="yr"></span> BroZ Homes &amp; Resorts. All rights reserved.</p></footer>
+</section>
+
+<!-- ===================================================== -->
+<!-- 4) MENU MANAGEMENT (admin only)                       -->
+<!-- ===================================================== -->
+<section id="menuManagementScreen" class="dashboard hidden">
+  <header class="top-bar">
+    <div class="top-bar-inner">
+      <div class="top-brand">
+        <div class="logo-placeholder small"><img class="brand-logo" src="logo.jpg" alt="BroZ" /></div>
+        <div>
+          <p class="top-brand-name">BroZ Food Billing</p>
+          <p class="top-brand-sub">Menu Management</p>
+        </div>
+      </div>
+      <div class="top-actions">
+        <button class="btn-ghost" data-action="back">Back</button>
+        <button class="btn-ghost" data-action="logout">Logout</button>
+      </div>
+    </div>
+  </header>
+  <main class="dashboard-main" style="grid-template-columns:1fr;">
+    <div class="form-panel" style="max-width:700px;margin:0 auto;">
+      <div class="panel-header">
+        <h2>Manage Menu Items</h2>
+        <p>Set default menu items and prices for each property.</p>
+      </div>
+      <div class="field-group">
+        <label for="m_property">Property</label>
+        <select id="m_property">
+          <option value="">-- Select a property --</option>
+        </select>
+      </div>
+      <div id="m_itemsContainer" style="margin-top:16px;"></div>
+      <button type="button" id="m_addItem" class="btn-add">+ Add Menu Item</button>
+      <div class="form-actions" style="margin-top:20px;">
+        <button type="button" class="btn-secondary" data-action="back">Back</button>
+        <button type="button" id="m_saveBtn" class="btn-primary">Save Menus</button>
+      </div>
+    </div>
+  </main>
+  <footer class="site-footer"><p>&copy; <span class="yr"></span> BroZ Homes &amp; Resorts. All rights reserved.</p></footer>
+</section>
+
+<!-- ===================================================== -->
+<!-- 5) PAST INVOICES (admin only)                         -->
+<!-- ===================================================== -->
+<section id="archiveScreen" class="dashboard hidden">
+  <header class="top-bar">
+    <div class="top-bar-inner">
+      <div class="top-brand">
+        <div class="logo-placeholder small"><img class="brand-logo" src="logo.jpg" alt="BroZ" /></div>
+        <div>
+          <p class="top-brand-name">BroZ Food Billing</p>
+          <p class="top-brand-sub">Past Bills</p>
+        </div>
+      </div>
+      <div class="top-actions">
+        <button class="btn-ghost" data-action="back">Back</button>
+        <button class="btn-ghost" data-action="logout">Logout</button>
+      </div>
+    </div>
+  </header>
+  <main class="archive-main">
+    <div class="archive-header">
+      <div>
+        <h2 class="archive-title">Past Food Bills</h2>
+        <p class="archive-sub" id="archiveCountLabel">Loading…</p>
+      </div>
+      <div class="archive-toolbar">
+        <div class="archive-search">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <input type="text" id="archiveSearch" placeholder="Search by guest, invoice #, property…" />
+        </div>
+        <select id="archiveFilterProperty" class="archive-filter"><option value="all">All properties</option></select>
+        <select id="archiveFilterMonth" class="archive-filter"><option value="all">All months</option></select>
+        <select id="archiveFilterStatus" class="archive-filter">
+          <option value="all">All status</option>
+          <option value="active">Active</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+        <select id="archiveSort" class="archive-filter">
+          <option value="newest">Newest first</option>
+          <option value="oldest">Oldest first</option>
+          <option value="amount-desc">Amount: High &rarr; Low</option>
+          <option value="amount-asc">Amount: Low &rarr; High</option>
+        </select>
+        <button class="btn-ghost" id="archiveRefresh" title="Refresh">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+        </button>
+      </div>
+    </div>
+    <div id="archiveEmpty" class="archive-empty hidden">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+      <h3>No food bills yet</h3>
+      <p>Once you connect Drive and generate bills, they'll appear here.</p>
+    </div>
+    <div id="archiveDriveOff" class="archive-empty hidden">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <h3>Drive not connected</h3>
+      <p>Connect Google Drive to view saved bills.</p>
+      <button class="btn-primary" data-action="drive-connect" style="margin-top:18px;">Connect Google Drive</button>
+    </div>
+    <div id="archiveLoading" class="archive-empty hidden">
+      <div class="spinner"></div>
+      <p style="margin-top:14px;">Loading from Drive…</p>
+    </div>
+    <div id="archiveList" class="archive-list"></div>
+  </main>
+  <footer class="site-footer"><p>&copy; <span class="yr"></span> BroZ Homes &amp; Resorts. All rights reserved.</p></footer>
+</section>
+
+<!-- ===================================================== -->
+<!-- INVOICE DETAIL MODAL                                  -->
+<!-- ===================================================== -->
+<div id="invoiceModal" class="modal hidden" role="dialog" aria-modal="true">
+  <div class="modal-backdrop" data-action="close-modal"></div>
+  <div class="modal-card">
+    <button class="modal-close" data-action="close-modal" aria-label="Close">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+    </button>
+    <div class="modal-header">
+      <h3 id="modalTitle">Food Bill</h3>
+      <p class="muted-label" id="modalSubtitle"></p>
+    </div>
+    <div id="modalBody" class="modal-body"></div>
+    <div class="modal-actions">
+      <button class="btn-ghost danger-btn" data-action="delete-invoice">Delete</button>
+      <button class="btn-ghost cancel-btn" data-action="cancel-invoice">Mark Cancelled</button>
+      <div style="flex:1"></div>
+      <button class="btn-ghost" data-action="edit-invoice">Edit</button>
+      <button class="btn-ghost" data-action="close-modal">Close</button>
+      <button class="btn-primary" data-action="download-invoice">Download PDF</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toastContainer" class="toast-container" aria-live="polite"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
