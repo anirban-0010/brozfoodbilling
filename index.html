@@ -7,12 +7,21 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<link rel="icon" type="image/svg+xml" href="logo.jpg">
+<link rel="icon" type="image/jpg" href="logo.jpg">
 <link rel="stylesheet" href="styles.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <meta name="google-client-id" content="1056273255320-pj4ph6u8f2h398hfi0g2tnk9heuntpc1.apps.googleusercontent.com">
+<!-- ============================================================ -->
+<!-- CENTRALIZED SHARED DRIVE FOLDER ID                            -->
+<!-- Admin: replace the value below with the Folder ID of a Google -->
+<!-- Drive folder that is SHARED (with Edit permission) to every   -->
+<!-- account that will log in to this app. Get the folder ID from  -->
+<!-- the URL: drive.google.com/drive/folders/<THIS_IS_THE_ID>      -->
+<!-- Leave empty to fall back to per-user "BroZ Food Bills" folder -->
+<!-- ============================================================ -->
+<meta name="broz-shared-folder-id" content="">
 </head>
 <body>
 
@@ -69,11 +78,17 @@
             <span class="drive-btn-label">Connect Drive</span>
           </button>
         </div>
+        <button class="btn-ghost" data-action="dashboard" id="homeDashboardBtn" style="display:none;">
+          Dashboard
+        </button>
         <button class="btn-ghost" data-action="past-invoices" id="homePastInvoicesBtn" style="display:none;">
           Past Bills
         </button>
         <button class="btn-ghost" data-action="manage-menus" id="homeManageMenusBtn" style="display:none;">
           Menus
+        </button>
+        <button class="btn-ghost" data-action="drive-settings" id="homeDriveSettingsBtn" style="display:none;">
+          Drive Settings
         </button>
         <button class="btn-ghost" data-action="logout">Logout</button>
       </div>
@@ -137,10 +152,26 @@
 
         <div class="form-section">
           <h3 class="section-title"><span class="section-num">02</span> Food Items</h3>
+
+          <!-- Menu search + category tabs -->
+          <div class="menu-toolbar" id="f_menuToolbar" style="display:none;">
+            <div class="menu-search-wrap">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+              <input type="text" id="f_menuSearch" placeholder="Search menu…" />
+            </div>
+            <div class="menu-cat-tabs" id="f_menuCatTabs"></div>
+          </div>
           <div id="f_menuChips" class="menu-chips"></div>
+          <p class="menu-empty-hint" id="f_menuEmptyHint" style="display:none;">No menu items found.</p>
+
           <div id="f_itemsContainer">
             <div class="food-item-row">
               <input type="text" class="item-name" placeholder="Item name" />
+              <select class="item-cat" title="Category">
+                <option value="Food">Food</option>
+                <option value="Beverage">Beverage</option>
+                <option value="Alcohol">Alcohol</option>
+              </select>
               <input type="number" class="item-qty" min="1" value="1" placeholder="Qty" />
               <input type="number" class="item-price" min="0" step="0.01" placeholder="Price" />
               <span class="item-total">₹ 0.00</span>
@@ -159,6 +190,10 @@
           <div class="total-display-row">
             <span>Subtotal:</span>
             <strong id="f_subtotal">₹ 0.00</strong>
+          </div>
+          <div class="total-display-row" id="f_catBreakdownRow" style="display:none;">
+            <span>By category:</span>
+            <span class="cat-breakdown" id="f_catBreakdown"></span>
           </div>
           <div class="total-display-row grand-total">
             <span>Grand Total:</span>
@@ -280,10 +315,10 @@
     </div>
   </header>
   <main class="dashboard-main" style="grid-template-columns:1fr;">
-    <div class="form-panel" style="max-width:700px;margin:0 auto;">
+    <div class="form-panel" style="max-width:780px;margin:0 auto;">
       <div class="panel-header">
         <h2>Manage Menu Items</h2>
-        <p>Set default menu items and prices for each property.</p>
+        <p>Set default menu items, categories &amp; prices for each property. Saved menus sync to the shared Drive folder.</p>
       </div>
       <div class="field-group">
         <label for="m_property">Property</label>
@@ -350,6 +385,26 @@
         </button>
       </div>
     </div>
+    <!-- PROPERTY-WISE SUMMARY (collapsible) -->
+    <div id="archiveSummary" class="archive-summary hidden">
+      <div class="archive-summary-header">
+        <button type="button" class="archive-summary-toggle" id="archiveSummaryToggle" aria-expanded="true">
+          <svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          <span>Revenue Summary</span>
+        </button>
+        <div class="archive-summary-tabs">
+          <button type="button" class="summary-tab active" data-summary-view="property">By Property</button>
+          <button type="button" class="summary-tab" data-summary-view="day">Day-wise</button>
+          <button type="button" class="summary-tab" data-summary-view="month">Month-wise</button>
+        </div>
+      </div>
+      <div id="archiveSummaryBody" class="archive-summary-body">
+        <div id="summaryViewProperty" class="summary-view"></div>
+        <div id="summaryViewDay" class="summary-view hidden"></div>
+        <div id="summaryViewMonth" class="summary-view hidden"></div>
+      </div>
+    </div>
+
     <div id="archiveEmpty" class="archive-empty hidden">
       <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
       <h3>No food bills yet</h3>
@@ -366,6 +421,103 @@
       <p style="margin-top:14px;">Loading from Drive…</p>
     </div>
     <div id="archiveList" class="archive-list"></div>
+  </main>
+  <footer class="site-footer"><p>&copy; <span class="yr"></span> BroZ Homes &amp; Resorts. All rights reserved.</p></footer>
+</section>
+
+<!-- ===================================================== -->
+<!-- 6) DASHBOARD (admin only) - Sales Summary             -->
+<!-- ===================================================== -->
+<section id="dashboardScreen" class="dashboard hidden">
+  <header class="top-bar">
+    <div class="top-bar-inner">
+      <div class="top-brand">
+        <div class="logo-placeholder small"><img class="brand-logo" src="logo.jpg" alt="BroZ" /></div>
+        <div>
+          <p class="top-brand-name">BroZ Food Billing</p>
+          <p class="top-brand-sub">Sales Dashboard</p>
+        </div>
+      </div>
+      <div class="top-actions">
+        <button class="btn-ghost" data-action="back">Back</button>
+        <button class="btn-ghost" data-action="logout">Logout</button>
+      </div>
+    </div>
+  </header>
+  <main class="dashboard-summary-main">
+    <div class="dash-header">
+      <h2 class="dash-title">Sales Summary</h2>
+      <div class="dash-controls">
+        <select id="dashPeriod" class="archive-filter">
+          <option value="today">Today</option>
+          <option value="yesterday">Yesterday</option>
+          <option value="week">Last 7 days</option>
+          <option value="month" selected>This month</option>
+          <option value="lastmonth">Last month</option>
+          <option value="ytd">Year to date</option>
+          <option value="all">All time</option>
+        </select>
+        <select id="dashProperty" class="archive-filter">
+          <option value="all">All properties</option>
+        </select>
+        <button class="btn-ghost" id="dashRefresh" title="Refresh">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+        </button>
+      </div>
+    </div>
+    <div id="dashDriveOff" class="archive-empty hidden">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <h3>Drive not connected</h3>
+      <p>Connect Google Drive to see the sales summary.</p>
+      <button class="btn-primary" data-action="drive-connect" style="margin-top:18px;">Connect Google Drive</button>
+    </div>
+    <div id="dashLoading" class="archive-empty hidden">
+      <div class="spinner"></div>
+      <p style="margin-top:14px;">Crunching numbers…</p>
+    </div>
+    <div id="dashContent" class="dash-content hidden">
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <p class="kpi-label">Revenue</p>
+          <p class="kpi-value" id="kpiRevenue">₹ 0.00</p>
+          <p class="kpi-sub" id="kpiRevenueSub">—</p>
+        </div>
+        <div class="kpi-card">
+          <p class="kpi-label">Bills</p>
+          <p class="kpi-value" id="kpiBills">0</p>
+          <p class="kpi-sub" id="kpiBillsSub">active bills</p>
+        </div>
+        <div class="kpi-card">
+          <p class="kpi-label">Avg. Bill</p>
+          <p class="kpi-value" id="kpiAvg">₹ 0.00</p>
+          <p class="kpi-sub" id="kpiAvgSub">per bill</p>
+        </div>
+        <div class="kpi-card">
+          <p class="kpi-label">Discounts</p>
+          <p class="kpi-value" id="kpiDiscount">₹ 0.00</p>
+          <p class="kpi-sub" id="kpiDiscountSub">total given</p>
+        </div>
+      </div>
+
+      <div class="dash-grid">
+        <div class="dash-panel">
+          <h3 class="dash-panel-title">Revenue by Category</h3>
+          <div id="dashByCategory" class="dash-bars"></div>
+        </div>
+        <div class="dash-panel">
+          <h3 class="dash-panel-title">Revenue by Property</h3>
+          <div id="dashByProperty" class="dash-bars"></div>
+        </div>
+        <div class="dash-panel">
+          <h3 class="dash-panel-title">Top 10 Items</h3>
+          <div id="dashTopItems" class="dash-bars"></div>
+        </div>
+        <div class="dash-panel">
+          <h3 class="dash-panel-title">Daily Revenue</h3>
+          <div id="dashDaily" class="dash-spark"></div>
+        </div>
+      </div>
+    </div>
   </main>
   <footer class="site-footer"><p>&copy; <span class="yr"></span> BroZ Homes &amp; Resorts. All rights reserved.</p></footer>
 </section>
@@ -391,6 +543,44 @@
       <button class="btn-ghost" data-action="edit-invoice">Edit</button>
       <button class="btn-ghost" data-action="close-modal">Close</button>
       <button class="btn-primary" data-action="download-invoice">Download PDF</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================================================== -->
+<!-- DRIVE SETTINGS MODAL (admin only)                     -->
+<!-- ===================================================== -->
+<div id="driveSettingsModal" class="modal hidden" role="dialog" aria-modal="true">
+  <div class="modal-backdrop" data-action="close-drive-settings"></div>
+  <div class="modal-card" style="max-width:560px;">
+    <button class="modal-close" data-action="close-drive-settings" aria-label="Close">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+    </button>
+    <div class="modal-header">
+      <h3>Drive Settings</h3>
+      <p class="muted-label">Configure the shared Drive folder for centralized storage</p>
+    </div>
+    <div class="modal-body">
+      <div class="field-group">
+        <label for="driveSettingsFolderId">Shared Folder ID</label>
+        <input type="text" id="driveSettingsFolderId" placeholder="e.g. 1aBcD3fGhIjKLMnoPQR_StuvwXyz" />
+        <p class="muted-label" style="margin-top:8px;font-size:12px;line-height:1.5;">
+          1. Create a folder in Google Drive (e.g. "BroZ Food Bills")<br/>
+          2. Share it with every staff Google account (with <strong>Editor</strong> access)<br/>
+          3. Copy the folder ID from the URL: <code style="font-size:11px;background:var(--stone-100);padding:2px 6px;border-radius:3px;">drive.google.com/drive/folders/<strong>FOLDER_ID</strong></code><br/>
+          4. Paste it above and click Save. All staff will then see the same bills &amp; menus.
+        </p>
+      </div>
+      <div class="field-group">
+        <label class="muted-label">Currently active</label>
+        <p id="driveSettingsActive" style="font-size:13px;color:var(--stone-700);word-break:break-all;">—</p>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-ghost" data-action="drive-settings-clear">Clear (use personal folder)</button>
+      <div style="flex:1"></div>
+      <button class="btn-ghost" data-action="close-drive-settings">Cancel</button>
+      <button class="btn-primary" data-action="drive-settings-save">Save</button>
     </div>
   </div>
 </div>
